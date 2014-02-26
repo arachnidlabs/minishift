@@ -1,0 +1,8 @@
+*.zip
+~*~
+*.hex
+*.eebin
+*.eep
+*.elf
+*.o
+*.bin

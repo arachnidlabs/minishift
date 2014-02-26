@@ -1,0 +1,15 @@
+G04 DipTrace 2.3.1.0*
+%INminishift_TopPaste.gtp*%
+%MOIN*%
+%ADD37C,0.0315*%
+%FSLAX44Y44*%
+G04*
+G70*
+G90*
+G75*
+G01*
+%LNTopPaste*%
+%LPD*%
+D37*
+X12486Y13236D3*
+M02*

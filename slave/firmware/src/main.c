@@ -39,9 +39,20 @@ const char col_pins[] PROGMEM = {
     _BV(PC0),
 };
 
+const uint8_t col_brightness_adj[] PROGMEM = { 255, 48, 77, 107, 136, 166, 195, 225, 255 };
+
 uint8_t display[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t sr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t sridx = 0;
+
+uint8_t count_set_bits(uint8_t v) {
+    uint8_t c;
+
+    for(c = 0; v; c++)
+        v &= v - 1;
+
+    return c;
+}
 
 ISR(TIMER0_COMPA_vect) {
     static uint8_t column = 0;
@@ -53,9 +64,17 @@ ISR(TIMER0_COMPA_vect) {
     // Set the row data
     column = (column + 1) & 0x7;
     ROW_PORT = display[column];
+
+    // Add dead time as required
+    OCR0B = pgm_read_byte(&col_brightness_adj[count_set_bits(~ROW_PORT)]);
     
     // Turn on the new column
     ENABLE_COL(column);
+}
+
+ISR(TIMER0_COMPB_vect) {
+    PORTC &= ~PORTC_COLS;
+    PORTB &= ~PORTB_COLS;
 }
 
 ISR(PCINT0_vect) {
@@ -68,17 +87,17 @@ ISR(PCINT0_vect) {
 
 ISR(SPI_STC_vect) {
     // Feed the SPI peripheral from the sr circular buffer
-    uint8_t out = sr[sridx];
     sr[sridx] = SPDR;
-    SPDR = out;
     sridx = (sridx + 1) & 0x7;
+    SPDR = sr[sridx];
 }
 
 static void ioinit(void) {
     // Enable timer 0: display refresh
     OCR0A = 250; // 8 megahertz / 64 / 250 = 250Hz
+    OCR0B = 255;
     TCCR0A = _BV(CTC0); // CTC(OCR0A), /64 prescaler
-    TIMSK0 |= _BV(OCIE0A); // Interrupt on counter reset
+    TIMSK0 |= _BV(OCIE0A) | _BV(OCIE0B); // Interrupt on counter reset and on OCR0B match
 
     // PORTD is all output for rows
     ROW_DDR = 0xff;

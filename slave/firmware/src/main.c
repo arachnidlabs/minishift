@@ -20,7 +20,7 @@
 #define PORTB_COLS (_BV(PB6))
 #define ENABLE_COL(col) if(col != 1) PORTC |= pgm_read_byte(&col_pins[col]); else PORTB |= pgm_read_byte(&col_pins[col])
 
-#define PWM_ON() (TCCR0A |= _BV(CS01) | _BV(CS00), DDRC |= PORTC_COLS, DDRB |= PORTB_COLS)
+#define PWM_ON() (TCCR0A |= _BV(CS01) , DDRC |= PORTC_COLS, DDRB |= PORTB_COLS)
 
 FUSES = {
     // Internal 8mhz oscillator; short startup; enable ISP programming.
@@ -44,6 +44,7 @@ const uint8_t col_brightness_adj[] PROGMEM = { 255, 48, 77, 107, 136, 166, 195, 
 uint8_t display[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t sr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t sridx = 0;
+uint8_t latch = 0;
 
 uint8_t count_set_bits(uint8_t v) {
     uint8_t c;
@@ -56,6 +57,12 @@ uint8_t count_set_bits(uint8_t v) {
 
 ISR(TIMER0_COMPA_vect) {
     static uint8_t column = 0;
+
+    if(column == 0 && latch) {
+        for(int i = 0; i < 8; i++)
+            display[i] = ~sr[(i + sridx) & 0x7];
+        latch = 0;
+    }
 
     // Turn off the old column
     PORTC &= ~PORTC_COLS;
@@ -80,8 +87,7 @@ ISR(TIMER0_COMPB_vect) {
 ISR(PCINT0_vect) {
     if(SPI_PIN & _BV(SPI_SS)) {
         // SS went high; transfer data from shift register to display
-        for(int i = 0; i < 8; i++)
-            display[i] = ~sr[(i + sridx) & 0x7];
+        latch = 1;
     }
 }
 
@@ -96,7 +102,7 @@ static void ioinit(void) {
     // Enable timer 0: display refresh
     OCR0A = 250; // 8 megahertz / 64 / 250 = 250Hz
     OCR0B = 255;
-    TCCR0A = _BV(CTC0); // CTC(OCR0A), /64 prescaler
+    TCCR0A = _BV(CTC0); // CTC(OCR0A), /8 prescaler
     TIMSK0 |= _BV(OCIE0A) | _BV(OCIE0B); // Interrupt on counter reset and on OCR0B match
 
     // PORTD is all output for rows

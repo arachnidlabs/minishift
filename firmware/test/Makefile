@@ -7,7 +7,7 @@
 
 MCU = attiny48
 FORMAT = ihex
-TARGET = main
+TARGET = test
 SRC = $(TARGET).c
 ASRC = 
 OPT = s
@@ -132,7 +132,7 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 # Default target.
 all: build
 
-build: elf hex eep bin eebin carray size
+build: elf hex eep bin eebin size carray
 
 elf: $(TARGET).elf
 hex: $(TARGET).hex
@@ -148,7 +148,7 @@ size: $(TARGET).elf
 
 # Program the device.  
 program: $(TARGET).hex
-	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
 
 
 # Rewrite the EEPROM
